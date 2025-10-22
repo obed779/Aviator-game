@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Aviator Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #mult { font-size: 48px; margin: 20px 0; }
+    #history { margin-top: 20px; }
+    .row { display:flex; gap:12px; margin-bottom:8px; }
+    .btn { padding:8px 12px; border-radius:6px; cursor:pointer; border:1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Aviator Demo</h1>
+  <div>
+    <button id="connectBtn" class="btn">Connect</button>
+    <button id="seed" class="btn">Seed DB</button>
+  </div>
+  <div id="status"></div>
+  <div id="mult">—</div>
+  <div>
+    <input id="betAmt" placeholder="Bet amount" />
+    <button id="betBtn" class="btn">Place Bet (demo)</button>
+  </div>
+  <h3>History</h3>
+  <div id="history"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    let socket;
+    const status = document.getElementById('status');
+    const mult = document.getElementById('mult');
+    const historyEl = document.getElementById('history');
+    document.getElementById('connectBtn').addEventListener('click', () => {
+      socket = io();
+      socket.on('connect', () => {
+        status.innerText = 'Connected — ' + socket.id;
+      });
+      socket.on('history', (rows) => {
+        historyEl.innerHTML = '';
+        rows.forEach(r => {
+          const d = document.createElement('div');
+          d.className = 'row';
+          d.innerText = r.round_id + ' → ' + r.result;
+          historyEl.appendChild(d);
+        });
+      });
+      socket.on('round:start', (data) => {
+        mult.innerText = '1.00x';
+      });
+      socket.on('round:tick', (data) => {
+        mult.innerText = data.multiplier.toFixed(2) + 'x';
+      });
+      socket.on('round:crash', (data) => {
+        const el = document.createElement('div');
+        el.innerText = 'Crash: ' + data.crash + 'x';
+        historyEl.prepend(el);
+        mult.innerText = '—';
+      });
+    });
+
+    document.getElementById('betBtn').addEventListener('click', () => {
+      const amount = document.getElementById('betAmt').value || '1';
+      if (!socket) { alert('Connect first'); return; }
+      socket.emit('place:bet', { amount, id: Date.now().toString(36) });
+    });
+
+    document.getElementById('seed').addEventListener('click', () => {
+      fetch('/api/seed', { method: 'POST' }).then(r=>r.json()).then(j=>alert(j.ok ? 'seeded' : JSON.stringify(j)));
+    });
+  </script>
+</body>
+</html>
