@@ -1,0 +1,1 @@
+Public folder contains index.html (frontend demo).
